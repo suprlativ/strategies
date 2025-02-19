@@ -1,4 +1,4 @@
-//@version=5
+//@version=6
 indicator("Reversal Pivot Points", overlay=true, max_lines_count=500, max_labels_count=500)
 
 // === Inputs ===
