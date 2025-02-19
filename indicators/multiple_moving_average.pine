@@ -1,0 +1,137 @@
+//@version=5
+indicator("Reversal Pivot Points", overlay=true, max_lines_count=500, max_labels_count=500)
+
+// === Inputs ===
+string pivotTimeframe = input.string("15m", title="Pivot Timeframe", options=["1m", "3m", "5m", "10m", "15m", "30m", "45m", "1h", "2h", "3h", "4h", "D", "W"], group='Pivot Settings', tooltip='The timeframe the script looks for pivots at')
+int leftBarsLimit = input.int(3, title="Left Bars Limit", minval=1, group='Pivot Settings', tooltip='Prevents pivots from being created if there is already one X candles back')
+int rightBarsLimit = input.int(2, title="Right Bars Limit", minval=1, group='Pivot Settings', tooltip='Prevents pivots from being created only after if the pivot is still valid after X amount of candles')
+bool removeOnClose = input.bool(false, title="Remove On Close (ROC)", group='Pivot Settings', tooltip='Only removes pivot if price action closes under/above the pivot')
+string rocTimeframe = input.string("15m", title="ROC Timeframe", options=["1m", "3m", "5m", "10m", "15m", "30m", "45m", "1h", "2h", "3h", "4h", "D", "W"], group='Pivot Settings', tooltip='The timeframe ROC looks at to see if any candles on that timeframe closed under/above the level')
+bool waitForClose = input.bool(false, title="Wait For Close", group='Pivot Settings', tooltip='Removes pivot only after the current candle closes')
+
+bool enableResistance = input(true, title="Enable Resistance Pivots", group="Line Settings")
+color resistanceLineColor = input.color(color.rgb(255, 255, 255), title='Resistance Line Color', group='Line Settings')
+bool enableSupport = input(true, title="Enable Support Pivots", group="Line Settings")
+color supportLineColor = input.color(color.rgb(255, 255, 255), title='Support Line Color', group='Line Settings')
+
+string lineExtensionType = input.string("Current", title="Line Extension Type", options=["Current", "Left", "Right", "Both"], group='Line Settings')
+int lineOffset = input.int(15, title="Line Offset", group='Line Settings', tooltip='How much to offset (in bars) the line and label from the current candle')
+string lineStyle = input.string("Solid (─)", title="Line Style", options=["Solid (─)", "Dotted (┈)", "Dashed (╌)", "Arrow Left (←)", "Arrow Right (→)", "Arrows Both (↔)"], group='Line Settings')
+
+bool displayPriceLevel = input.bool(false, title="Display Level", group='Text Settings', tooltip='Whether to or not to display the price of the pivot')
+bool displayPerfectLevel = input.bool(false, title="Display Perfect Level", group='Text Settings', tooltip='Labels a level if price action perfectly bounces off of it labeled as PDB/PDT (does not work if "Remove On Close" is enabled)')
+color textColor = input.color(color.rgb(255, 255, 255), title='Text Color', group='Text Settings')
+string textSize = input.string("Small", title="Text Size", options=["Auto", "Tiny", "Small", "Normal", "Large", "Huge"], group='Text Settings')
+
+// === Helper Functions ===
+convertTimeframe(inputTimeframe) =>
+    switch inputTimeframe
+        '1m' => '1'
+        '3m' => '3'
+        '5m' => '5'
+        '10m' => '10'
+        '15m' => '15'
+        '30m' => '30'
+        '45m' => '45'
+        '1h' => '60'
+        '2h' => '120'
+        '3h' => '180'
+        '4h' => '240'
+        'D' => 'D'
+        'W' => 'W'
+
+getLineStyle(style) =>
+    switch style
+        "Solid (─)" => line.style_solid
+        "Dotted (┈)" => line.style_dotted
+        "Dashed (╌)" => line.style_dashed
+        "Arrow Left (←)" => line.style_arrow_left
+        "Arrow Right (→)" => line.style_arrow_right
+        "Arrows Both (↔)" => line.style_arrow_both
+
+getTextSize(size) =>
+    switch size
+        "Auto" => size.auto
+        "Tiny" => size.tiny
+        "Small" => size.small
+        "Normal" => size.normal
+        "Large" => size.large
+        "Huge" => size.huge
+
+getExtensionType(type) =>
+    switch type
+        "Current" => extend.none
+        "Left" => extend.left
+        "Right" => extend.right
+        "Both" => extend.both
+
+// === Variables ===
+string convertedPivotTimeframe = convertTimeframe(pivotTimeframe)
+string convertedROCTimeframe = convertTimeframe(rocTimeframe)
+// Directly assign the result of the helper function
+var extendType = getExtensionType(lineExtensionType) // No type declaration needed
+int textSizeValue = getTextSize(textSize)
+line.style lineStyleValue = getLineStyle(lineStyle)
+
+float[] resistanceLevels = array.new_float()
+float[] supportLevels = array.new_float()
+line[] resistanceLines = array.new_line()
+line[] supportLines = array.new_line()
+label[] resistanceLabels = array.new_label()
+label[] supportLabels = array.new_label()
+
+// === Create Pivots ===
+createPivots(timeframe) =>
+    [pivotHigh, pivotLow] = request.security(syminfo.tickerid, timeframe, [math.round_to_mintick(ta.pivothigh(leftBarsLimit, rightBarsLimit)), math.round_to_mintick(ta.pivotlow(leftBarsLimit, rightBarsLimit))], gaps=barmerge.gaps_on)
+    momentCTD = time(timeframe)[rightBarsLimit]
+
+    // Resistance Pivots
+    if not na(pivotHigh) and not array.includes(resistanceLevels, pivotHigh)
+        line newResistanceLine = line.new(x1=momentCTD, y1=pivotHigh, x2=time + lineOffset * 60000, y2=pivotHigh, extend=extendType, xloc=xloc.bar_time, color=resistanceLineColor, style=lineStyleValue)
+        array.push(resistanceLines, newResistanceLine)
+        array.push(resistanceLevels, pivotHigh)
+        if displayPriceLevel
+            label newResistanceLabel = label.new(x=time + lineOffset * 60000, y=pivotHigh, style=label.style_none, text=str.tostring(pivotHigh), xloc=xloc.bar_time, textcolor=textColor, size=textSizeValue)
+            array.push(resistanceLabels, newResistanceLabel)
+
+    // Support Pivots
+    if not na(pivotLow) and not array.includes(supportLevels, pivotLow)
+        line newSupportLine = line.new(x1=momentCTD, y1=pivotLow, x2=time + lineOffset * 60000, y2=pivotLow, extend=extendType, xloc=xloc.bar_time, color=supportLineColor, style=lineStyleValue)
+        array.push(supportLines, newSupportLine)
+        array.push(supportLevels, pivotLow)
+        if displayPriceLevel
+            label newSupportLabel = label.new(x=time + lineOffset * 60000, y=pivotLow, style=label.style_none, text=str.tostring(pivotLow), xloc=xloc.bar_time, textcolor=textColor, size=textSizeValue)
+            array.push(supportLabels, newSupportLabel)
+
+// Initialize pivots
+if not timeframe.isseconds and timeframe.in_seconds() <= timeframe.in_seconds(convertedPivotTimeframe)
+    createPivots(convertedPivotTimeframe)
+
+// === Remove Broken Pivots ===
+removeBrokenPivots(linesArray, levelsArray, labelsArray, priceCondition, alertMessage) =>
+    var int index = 0
+    while index < array.size(linesArray) and array.size(linesArray) > 0
+        line currentLine = array.get(linesArray, index)
+        float breakLevel = line.get_y1(currentLine)
+        bool shouldRemove = ((priceCondition and not removeOnClose) or (close > breakLevel and removeOnClose)) and ((waitForClose and barstate.isconfirmed) or not waitForClose)
+
+        if shouldRemove
+            alert(message=alertMessage + str.tostring(breakLevel))
+            array.remove(linesArray, index)
+            if array.size(levelsArray) > index
+                array.remove(levelsArray, index)
+            line.delete(currentLine)
+            if displayPriceLevel and array.size(labelsArray) > index
+                label currentLabel = array.get(labelsArray, index)
+                array.remove(labelsArray, index)
+                label.delete(currentLabel)
+        else
+            line.set_x2(currentLine, time + lineOffset * 60000)
+            if displayPriceLevel and array.size(labelsArray) > index
+                label currentLabel = array.get(labelsArray, index)
+                label.set_x(currentLabel, time + lineOffset * 60000)
+            index += 1
+
+// Remove broken resistance and support pivots
+removeBrokenPivots(resistanceLines, resistanceLevels, resistanceLabels, high > array.get(resistanceLevels, index), "Resistance Crossing @ ")
+removeBrokenPivots(supportLines, supportLevels, supportLabels, low < array.get(supportLevels, index), "Support Crossing @ ")
