@@ -1,0 +1,49 @@
+//@version=5
+strategy("Spot Entry, Take Profit, and Cut Loss", overlay=true, default_qty_type=strategy.percent_of_equity, default_qty_value=10)
+
+// === Inputs ===
+// Entry Conditions
+var int maLength = input.int(50, title="Moving Average Length", group="Entry Settings")
+var bool useRSI = input.bool(true, title="Use RSI for Entry?", group="Entry Settings")
+var int rsiLength = input.int(14, title="RSI Length", group="Entry Settings")
+var float rsiOverbought = input.float(70, title="RSI Overbought Level", group="Entry Settings")
+var float rsiOversold = input.float(30, title="RSI Oversold Level", group="Entry Settings")
+
+// Take Profit and Stop Loss
+var float takeProfitPerc = input.float(2.0, title="Take Profit (%)", group="Trade Management") / 100
+var float stopLossPerc = input.float(1.0, title="Stop Loss (%)", group="Trade Management") / 100
+
+// === Variables ===
+float ma = ta.sma(close, maLength)
+float rsi = ta.rsi(close, rsiLength)
+
+// === Entry Conditions ===
+bool longCondition = close > ma and (not useRSI or rsi < rsiOversold)
+bool shortCondition = close < ma and (not useRSI or rsi > rsiOverbought)
+
+// === Strategy Execution ===
+if (longCondition)
+    strategy.entry("Buy", strategy.long)
+
+if (shortCondition)
+    strategy.entry("Sell", strategy.short)
+
+// === Take Profit and Stop Loss ===
+float takeProfitLong = strategy.position_avg_price * (1 + takeProfitPerc)
+float stopLossLong = strategy.position_avg_price * (1 - stopLossPerc)
+
+float takeProfitShort = strategy.position_avg_price * (1 - takeProfitPerc)
+float stopLossShort = strategy.position_avg_price * (1 + stopLossPerc)
+
+// Exit for Long Positions
+if (strategy.position_size > 0)
+    strategy.exit("Take Profit/Stop Loss (Long)", from_entry="Buy", limit=takeProfitLong, stop=stopLossLong)
+
+// Exit for Short Positions
+if (strategy.position_size < 0)
+    strategy.exit("Take Profit/Stop Loss (Short)", from_entry="Sell", limit=takeProfitShort, stop=stopLossShort)
+
+// === Plotting ===
+plot(ma, color=color.blue, title="Moving Average")
+hline(rsiOverbought, "RSI Overbought", color=color.red)
+hline(rsiOversold, "RSI Oversold", color=color.green)
