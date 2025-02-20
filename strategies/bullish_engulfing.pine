@@ -1,5 +1,6 @@
 //@version=6
 strategy("Stocks - Bullish Engulfing", shorttitle = "Stocks - Bull. Eng.", overlay=true, default_qty_type = strategy.percent_of_equity, default_qty_value= 100)
+//@author:"superlativ"
 
 //-------------------------------------------
 // User Inputs

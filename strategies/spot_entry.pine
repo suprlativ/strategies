@@ -1,5 +1,6 @@
 //@version=5
 strategy("Spot Entry, Take Profit, and Cut Loss", overlay=true, default_qty_type=strategy.percent_of_equity, default_qty_value=10)
+//@author:"superlativ"
 
 // === Inputs ===
 // Entry Conditions

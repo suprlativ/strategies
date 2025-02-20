@@ -1,5 +1,6 @@
 //@version=6
 strategy("Stocks - Inside Day Strategy", shorttitle = "Stocks - Inside Day", overlay=true, default_qty_type = strategy.percent_of_equity, default_qty_value= 100)
+//@author:"superlativ"
 
 //-------------------------------------------
 // User Inputs

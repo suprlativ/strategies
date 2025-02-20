@@ -1,5 +1,6 @@
 //@version=6
 strategy("Stocks - Stan Weinstein Stage 2 Breakout Strategy", shorttitle = "Stocks - Stan Weinstein Stage 2", overlay=false, default_qty_type = strategy.percent_of_equity, default_qty_value= 100)
+//@author:"superlativ"
 
 //-------------------------------------------
 // Inputs
