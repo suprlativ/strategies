@@ -1,0 +1,25 @@
+//@version=5
+strategy("Moving Average Crossover", overlay=true)
+
+// Input parameters
+short_ma_length = input.int(20, title="Short MA Length")
+long_ma_length = input.int(50, title="Long MA Length")
+
+// Calculate moving averages
+short_ma = ta.sma(close, short_ma_length)
+long_ma = ta.sma(close, long_ma_length)
+
+// Plot moving averages
+plot(short_ma, color=color.blue, title="Short MA")
+plot(long_ma, color=color.red, title="Long MA")
+
+// Generate signals
+long_condition = ta.crossover(short_ma, long_ma)
+short_condition = ta.crossunder(short_ma, long_ma)
+
+// Execute trades
+if (long_condition)
+    strategy.entry("Buy", strategy.long)
+
+if (short_condition)
+    strategy.entry("Sell", strategy.short)
