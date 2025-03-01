@@ -1,0 +1,23 @@
+//@version=5
+indicator("Bitcoin Market Dominance with Moving Averages", overlay=false)
+
+// Fetch Bitcoin and Total Market Cap
+btcMarketCap = request.security("CRYPTOCAP:BTC", timeframe.period, close)
+totalMarketCap = request.security("CRYPTOCAP:TOTAL", timeframe.period, close)
+
+// Calculate BTC Dominance
+btcDominance = (btcMarketCap / totalMarketCap) * 100
+
+// Moving Averages of BTC Dominance with user input
+shortMALength = input.int(20, title="Short MA Length")  // Short-term moving average
+longMALength = input.int(50, title="Long MA Length")   // Long-term moving average
+btcDominanceShortMA = ta.sma(btcDominance, shortMALength)
+btcDominanceLongMA = ta.sma(btcDominance, longMALength)
+
+// Plot BTC Dominance and Moving Averages in a separate panel
+plot(btcDominance, title="BTC Dominance %", color=color.blue, linewidth=2)
+plot(btcDominanceShortMA, title="BTC Dominance Short MA", color=color.orange, linewidth=2)
+plot(btcDominanceLongMA, title="BTC Dominance Long MA", color=color.purple, linewidth=2)
+
+// Highlight Dominance Zones
+bgcolor(btcDominance > 50 ? color.new(color.green, 85) : btcDominance < 40 ? color.new(color.red, 85) : btcDominance > 40 and btcDominance < 50 ? color.new(color.orange, 85) : na)
